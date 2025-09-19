@@ -1,0 +1,39 @@
+# Dependencies
+red-flower-web/node_modules/
+red-flower-web/package-lock.json
+
+# Build outputs
+red-flower-web/dist/
+target/
+*.jar
+*.war
+*.ear
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+logs/
+
+# Temporary files
+*.tmp
+*.temp
+
+# Local environment files
+.env.local
+.env.*.local
+
+# Claude settings
+.claude/settings.local.json
+
+# Java files
+*.class

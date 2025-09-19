@@ -1,0 +1,203 @@
+version: '3.8'
+
+services:
+  # MySQL数据库
+  mysql:
+    image: mysql:8.0
+    container_name: red-flower-mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: 123456
+      MYSQL_DATABASE: red_flower
+      MYSQL_USER: redflower
+      MYSQL_PASSWORD: redflower123
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+    networks:
+      - red-flower-network
+
+  # Redis缓存
+  redis:
+    image: redis:7-alpine
+    container_name: red-flower-redis
+    restart: always
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    networks:
+      - red-flower-network
+
+  # RocketMQ Name Server
+  rocketmq-namesrv:
+    image: apache/rocketmq:5.1.4
+    container_name: red-flower-rocketmq-namesrv
+    restart: always
+    ports:
+      - "9876:9876"
+    environment:
+      JAVA_OPT_EXT: "-Duser.home=/opt -Xms256m -Xmx256m -Xmn128m"
+    command: ["sh", "mqnamesrv"]
+    volumes:
+      - rocketmq_namesrv_data:/opt/rocketmq-5.1.4/store
+    networks:
+      - red-flower-network
+
+  # RocketMQ Broker
+  rocketmq-broker:
+    image: apache/rocketmq:5.1.4
+    container_name: red-flower-rocketmq-broker
+    restart: always
+    ports:
+      - "10909:10909"
+      - "10911:10911"
+    environment:
+      NAMESRV_ADDR: "rocketmq-namesrv:9876"
+      JAVA_OPT_EXT: "-Duser.home=/opt -Xms256m -Xmx256m -Xmn128m"
+    command: ["sh", "mqbroker", "-c", "/opt/rocketmq-5.1.4/conf/broker.conf"]
+    depends_on:
+      - rocketmq-namesrv
+    volumes:
+      - rocketmq_broker_data:/opt/rocketmq-5.1.4/store
+      - ./conf/broker.conf:/opt/rocketmq-5.1.4/conf/broker.conf
+    networks:
+      - red-flower-network
+
+  # Nacos注册中心
+  nacos:
+    image: nacos/nacos-server:v2.3.0-slim
+    container_name: red-flower-nacos
+    restart: always
+    environment:
+      MODE: standalone
+      SPRING_DATASOURCE_PLATFORM: mysql
+      MYSQL_SERVICE_HOST: mysql
+      MYSQL_SERVICE_DB_NAME: red_flower
+      MYSQL_SERVICE_USER: root
+      MYSQL_SERVICE_PASSWORD: 123456
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+    depends_on:
+      - mysql
+    networks:
+      - red-flower-network
+
+  # 用户服务
+  user-service:
+    build:
+      context: ./red-flower-user
+      dockerfile: Dockerfile
+    container_name: red-flower-user
+    restart: always
+    ports:
+      - "8081:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      NACOS_SERVER: nacos:8848
+      MYSQL_HOST: mysql:3306
+      REDIS_HOST: redis:6379
+      RABBITMQ_HOST: rocketmq-namesrv:9876
+    depends_on:
+      - mysql
+      - redis
+      - rocketmq-namesrv
+      - rocketmq-broker
+      - nacos
+    networks:
+      - red-flower-network
+
+  # 红花服务
+  flower-service:
+    build:
+      context: ./red-flower-flower
+      dockerfile: Dockerfile
+    container_name: red-flower-flower
+    restart: always
+    ports:
+      - "8082:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      NACOS_SERVER: nacos:8848
+      MYSQL_HOST: mysql:3306
+      REDIS_HOST: redis:6379
+      RABBITMQ_HOST: rocketmq-namesrv:9876
+    depends_on:
+      - mysql
+      - redis
+      - rocketmq-namesrv
+      - rocketmq-broker
+      - nacos
+    networks:
+      - red-flower-network
+
+  # 日志服务
+  log-service:
+    build:
+      context: ./red-flower-log
+      dockerfile: Dockerfile
+    container_name: red-flower-log
+    restart: always
+    ports:
+      - "8086:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      NACOS_SERVER: nacos:8848
+      MYSQL_HOST: mysql:3306
+      REDIS_HOST: redis:6379
+      RABBITMQ_HOST: rocketmq-namesrv:9876
+    depends_on:
+      - mysql
+      - redis
+      - rocketmq-namesrv
+      - rocketmq-broker
+      - nacos
+    networks:
+      - red-flower-network
+
+  # 网关服务
+  gateway:
+    build:
+      context: ./red-flower-gateway
+      dockerfile: Dockerfile
+    container_name: red-flower-gateway
+    restart: always
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+      NACOS_SERVER: nacos:8848
+    depends_on:
+      - nacos
+      - user-service
+      - flower-service
+      - log-service
+    networks:
+      - red-flower-network
+
+  # 前端应用
+  web:
+    build:
+      context: ./red-flower-web
+      dockerfile: Dockerfile
+    container_name: red-flower-web
+    restart: always
+    ports:
+      - "80:80"
+    depends_on:
+      - gateway
+    networks:
+      - red-flower-network
+
+volumes:
+  mysql_data:
+  redis_data:
+  rocketmq_namesrv_data:
+  rocketmq_broker_data:
+
+networks:
+  red-flower-network:
+    driver: bridge
