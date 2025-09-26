@@ -5,49 +5,52 @@
       <p>管理您的家庭成员和红花分配</p>
     </div>
 
-    <el-row :gutter="20">
-      <!-- 家庭信息 -->
-      <el-col :span="8">
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>家庭信息</span>
-              <el-button type="primary" size="small" @click="editFamily">编辑</el-button>
-            </div>
-          </template>
-          <div class="family-info">
-            <div class="family-avatar">👨‍👩‍👧‍👦</div>
-            <h3>{{ familyInfo.name }}</h3>
-            <p>{{ familyInfo.description }}</p>
-            <div class="family-stats">
-              <div class="stat-item">
-                <span class="label">成员数量:</span>
-                <span class="value">{{ familyMembers.length }}</span>
+    <el-tabs v-model="activeTab" @tab-click="handleTabClick">
+      <!-- 家庭概览 -->
+      <el-tab-pane label="家庭概览" name="overview">
+        <el-row :gutter="20">
+          <!-- 家庭信息 -->
+          <el-col :span="8">
+            <el-card>
+              <template #header>
+                <div class="card-header">
+                  <span>家庭信息</span>
+                  <el-button type="primary" size="small" @click="editFamily">编辑</el-button>
+                </div>
+              </template>
+              <div class="family-info">
+                <div class="family-avatar">👨‍👩‍👧‍👦</div>
+                <h3>{{ familyInfo.name }}</h3>
+                <p>{{ familyInfo.description }}</p>
+                <div class="family-stats">
+                  <div class="stat-item">
+                    <span class="label">成员数量:</span>
+                    <span class="value">{{ familyMembers.length }}</span>
+                  </div>
+                  <div class="stat-item">
+                    <span class="label">红花总量:</span>
+                    <span class="value">{{ familyInfo.flowerTotal }}🌸</span>
+                  </div>
+                </div>
               </div>
-              <div class="stat-item">
-                <span class="label">红花总量:</span>
-                <span class="value">{{ familyInfo.flowerTotal }}🌸</span>
-              </div>
-            </div>
-          </div>
-        </el-card>
-      </el-col>
+            </el-card>
+          </el-col>
 
-      <!-- 家庭成员 -->
-      <el-col :span="16">
-        <el-card>
-          <template #header>
-            <div class="card-header">
-              <span>家庭成员</span>
-              <el-button type="primary" size="small" @click="addMember">添加成员</el-button>
-            </div>
-          </template>
-          <div class="members-grid">
-            <div
-              v-for="member in familyMembers"
-              :key="member.id"
-              class="member-card"
-              :class="member.role.toLowerCase()"
+          <!-- 家庭成员 -->
+          <el-col :span="16">
+            <el-card>
+              <template #header>
+                <div class="card-header">
+                  <span>家庭成员</span>
+                  <el-button type="primary" size="small" @click="addMember">添加成员</el-button>
+                </div>
+              </template>
+              <div class="members-grid">
+                <div
+                  v-for="member in familyMembers"
+                  :key="member.id"
+                  class="member-card"
+                  :class="member.role.toLowerCase()"
             >
               <div class="member-avatar">
                 <el-avatar :size="60" :src="member.avatar">
@@ -93,6 +96,101 @@
         </el-card>
       </el-col>
     </el-row>
+  </el-tab-pane>
+
+  <!-- 黑花管理 -->
+  <el-tab-pane label="黑花管理" name="blackflower">
+    <el-card>
+      <template #header>
+        <div class="card-header">
+          <span>黑花消除</span>
+          <span class="header-desc">家长权限：消除孩子的黑花</span>
+        </div>
+      </template>
+
+      <div class="black-flower-management">
+        <el-row :gutter="20">
+          <!-- 子女列表 -->
+          <el-col :span="12">
+            <h3>选择要消除黑花的孩子</h3>
+            <div class="children-list">
+              <div
+                v-for="child in childrenMembers"
+                :key="child.id"
+                class="child-item"
+                :class="{ active: selectedChild?.id === child.id }"
+                @click="selectChild(child)"
+              >
+                <el-avatar :size="50">{{ child.nickname.charAt(0) }}</el-avatar>
+                <div class="child-info">
+                  <h4>{{ child.nickname }}</h4>
+                  <div class="flower-display">
+                    <span class="red-flowers">🌸 {{ child.redFlowers || 0 }}</span>
+                    <span class="black-flowers">🖤 {{ child.blackFlowers || 0 }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </el-col>
+
+          <!-- 消除操作 -->
+          <el-col :span="12">
+            <div v-if="selectedChild" class="elimination-form">
+              <h3>消除 {{ selectedChild.nickname }} 的黑花</h3>
+              <el-form :model="eliminationForm" label-width="100px">
+                <el-form-item label="当前黑花">
+                  <span class="current-black">{{ selectedChild.blackFlowers || 0 }} 朵</span>
+                </el-form-item>
+                <el-form-item label="消除数量">
+                  <el-input-number
+                    v-model="eliminationForm.amount"
+                    :min="1"
+                    :max="selectedChild.blackFlowers || 0"
+                    :disabled="!selectedChild.blackFlowers"
+                  />
+                </el-form-item>
+                <el-form-item label="消除原因">
+                  <el-input
+                    v-model="eliminationForm.reason"
+                    type="textarea"
+                    placeholder="请输入消除黑花的原因，如：已认错改正、完成改正任务等"
+                    rows="3"
+                  />
+                </el-form-item>
+                <el-form-item>
+                  <el-button
+                    type="danger"
+                    @click="eliminateBlackFlowers"
+                    :disabled="!eliminationForm.amount || !eliminationForm.reason || !selectedChild.blackFlowers"
+                  >
+                    确认消除黑花
+                  </el-button>
+                </el-form-item>
+              </el-form>
+            </div>
+            <div v-else class="no-selection">
+              <el-empty description="请选择要操作的孩子" />
+            </div>
+          </el-col>
+        </el-row>
+
+        <!-- 消除记录 -->
+        <el-divider>消除记录</el-divider>
+        <el-table :data="eliminationHistory" style="width: 100%">
+          <el-table-column prop="createTime" label="消除时间" width="150" />
+          <el-table-column prop="childName" label="孩子" width="100" />
+          <el-table-column prop="amount" label="消除数量" width="100">
+            <template #default="scope">
+              {{ scope.row.amount }} 朵
+            </template>
+          </el-table-column>
+          <el-table-column prop="reason" label="消除原因" />
+          <el-table-column prop="operatorName" label="操作者" width="100" />
+        </el-table>
+      </div>
+    </el-card>
+  </el-tab-pane>
+</el-tabs>
 
     <!-- 红花转账对话框 -->
     <el-dialog
@@ -128,9 +226,11 @@
 </template>
 
 <script setup lang="ts">
-import { ref, reactive, onMounted } from 'vue'
-import { ElMessage } from 'element-plus'
+import { ref, reactive, onMounted, computed } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
+
+const activeTab = ref('overview')
 
 const familyInfo = reactive({
   id: 1,
@@ -187,6 +287,37 @@ const transferForm = reactive({
   remark: ''
 })
 
+// 黑花消除相关数据
+const selectedChild = ref(null)
+const eliminationForm = reactive({
+  amount: 1,
+  reason: ''
+})
+
+const eliminationHistory = ref([
+  {
+    id: 1,
+    createTime: '2024-01-20 10:30:00',
+    childName: '小明',
+    amount: 1,
+    reason: '已认错并承诺改正',
+    operatorName: '爸爸'
+  },
+  {
+    id: 2,
+    createTime: '2024-01-19 15:20:00',
+    childName: '小明',
+    amount: 2,
+    reason: '完成额外家务作为补偿',
+    operatorName: '妈妈'
+  }
+])
+
+// 计算属性：只获取子女成员
+const childrenMembers = computed(() => {
+  return familyMembers.value.filter(member => member.role === 'CHILD')
+})
+
 onMounted(() => {
   loadFamilyInfo()
   loadFamilyMembers()
@@ -235,6 +366,80 @@ const transferFlowers = (member: any) => {
 
 const viewMemberDetail = (member: any) => {
   ElMessage.info(`查看${member.nickname}的详细信息`)
+}
+
+const handleTabClick = (tab: any) => {
+  console.log('切换到标签页:', tab.props.name)
+}
+
+// 黑花消除相关方法
+const selectChild = (child: any) => {
+  selectedChild.value = child
+  eliminationForm.amount = Math.min(1, child.blackFlowers || 0)
+  eliminationForm.reason = ''
+}
+
+const eliminateBlackFlowers = async () => {
+  if (!selectedChild.value || !eliminationForm.amount || !eliminationForm.reason) {
+    ElMessage.warning('请填写完整信息')
+    return
+  }
+
+  try {
+    await ElMessageBox.confirm(
+      `确认消除 ${selectedChild.value.nickname} 的 ${eliminationForm.amount} 朵黑花？`,
+      '确认消除',
+      {
+        confirmButtonText: '确认',
+        cancelButtonText: '取消',
+        type: 'warning',
+      }
+    )
+
+    // 调用后端API
+    await request.post('/flower/black-flower/eliminate', {
+      targetUserId: selectedChild.value.id,
+      amount: eliminationForm.amount,
+      reason: eliminationForm.reason,
+      familyId: familyInfo.id
+    }, {
+      params: {
+        operatorUserId: getCurrentUserId()
+      }
+    })
+
+    // 更新本地数据
+    selectedChild.value.blackFlowers -= eliminationForm.amount
+
+    // 添加到历史记录
+    eliminationHistory.value.unshift({
+      id: Date.now(),
+      createTime: new Date().toLocaleString(),
+      childName: selectedChild.value.nickname,
+      amount: eliminationForm.amount,
+      reason: eliminationForm.reason,
+      operatorName: getCurrentUserName()
+    })
+
+    ElMessage.success('黑花消除成功！')
+
+    // 重置表单
+    eliminationForm.amount = 1
+    eliminationForm.reason = ''
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('消除黑花失败:', error)
+      ElMessage.error('消除失败，请稍后重试')
+    }
+  }
+}
+
+const getCurrentUserId = () => {
+  return localStorage.getItem('userId') || '1'
+}
+
+const getCurrentUserName = () => {
+  return localStorage.getItem('username') || '家长'
 }
 
 const confirmTransfer = async () => {
@@ -387,5 +592,88 @@ const confirmTransfer = async () => {
 
 .member-actions .el-button {
   margin: 0 5px;
+}
+
+/* 黑花管理样式 */
+.header-desc {
+  font-size: 12px;
+  color: #999;
+  font-weight: normal;
+}
+
+.black-flower-management {
+  padding: 20px 0;
+}
+
+.children-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.child-item {
+  display: flex;
+  align-items: center;
+  padding: 15px;
+  border: 2px solid #e9ecef;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.child-item:hover {
+  border-color: #007bff;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 123, 255, 0.1);
+}
+
+.child-item.active {
+  border-color: #007bff;
+  background: #f8fbff;
+}
+
+.child-info {
+  margin-left: 15px;
+  flex: 1;
+}
+
+.child-info h4 {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+}
+
+.flower-display {
+  display: flex;
+  gap: 15px;
+}
+
+.red-flowers, .black-flowers {
+  font-size: 14px;
+  font-weight: bold;
+}
+
+.red-flowers {
+  color: #e74c3c;
+}
+
+.black-flowers {
+  color: #333;
+}
+
+.elimination-form {
+  background: #f8f9fa;
+  padding: 20px;
+  border-radius: 12px;
+}
+
+.current-black {
+  color: #333;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.no-selection {
+  text-align: center;
+  padding: 40px 0;
 }
 </style>

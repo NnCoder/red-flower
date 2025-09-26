@@ -18,6 +18,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/api/user")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "http://localhost:8080")
 public class UserController {
 
     private final UserService userService;
@@ -47,6 +48,6 @@ public class UserController {
     @PutMapping("/{id}")
     public Result<Void> updateUser(@PathVariable Long id, @RequestBody UserVO userVO) {
         userService.updateUser(id, userVO);
-        return Result.success("更新成功");
+        return Result.success();
     }
 }

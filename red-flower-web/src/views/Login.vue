@@ -88,8 +88,13 @@ const handleLogin = async () => {
 
     ElMessage.success('登录成功')
     router.push('/dashboard')
-  } catch (error) {
+  } catch (error: any) {
+    // 错误已在request拦截器中处理并显示，这里只需记录日志
     console.error('登录失败:', error)
+    // 只有当错误未被拦截器处理时才显示错误信息
+    if (error && !error.isHandled) {
+      ElMessage.error(error.message || '登录失败')
+    }
   } finally {
     loading.value = false
   }

@@ -67,6 +67,20 @@ docker-compose build && docker-compose up -d
 mysql -u root -p < init.sql
 ```
 
+#### Default User Accounts
+
+All default accounts use the same password: **admin123**
+
+| Username | Password | Role | Description |
+|----------|----------|------|-------------|
+| admin | admin123 | ADMIN | 系统管理员 |
+| parent1 | admin123 | PARENT | 爸爸 |
+| parent2 | admin123 | PARENT | 妈妈 |
+| child1 | admin123 | CHILD | 小明 |
+| child2 | admin123 | CHILD | 小红 |
+
+**注意**: 生产环境请务必修改默认密码！
+
 ## Architecture
 
 ### Microservices Structure
@@ -85,9 +99,9 @@ mysql -u root -p < init.sql
 ### Technology Stack
 
 **Backend:**
-- Java 17 + Spring Boot 3.1.5 + Spring Cloud 2022.0.4
+- Java 17 + Spring Boot 3.1.5 + Spring Cloud 2023.0.0
 - MySQL 8.0 + MyBatis Plus + Redis 7.x
-- RocketMQ 5.x + Nacos 2.x + JWT Authentication
+- RocketMQ 5.x + JWT Authentication
 - Knife4j for API documentation
 
 **Frontend:**
@@ -104,7 +118,7 @@ mysql -u root -p < init.sql
 - Exception handling with `BusinessException`
 
 **Service Configuration:**
-- All services use Nacos for service discovery and configuration
+- All services run independently without service discovery
 - Database connections via Druid connection pool
 - Redis for caching with Lettuce client
 - RocketMQ for asynchronous messaging
@@ -124,7 +138,6 @@ mysql -u root -p < init.sql
 - Flower Service: 8082
 - Log Service: 8086
 - Frontend Dev: 8080 (npm run serve)
-- Nacos: 8848
 - MySQL: 3306
 - Redis: 6379
 - RocketMQ NameServer: 9876
@@ -134,7 +147,6 @@ Services use `application.yml` with profiles (dev/docker). Key configurations:
 - Database: MySQL with Druid connection pool
 - Cache: Redis with Lettuce
 - Messaging: RocketMQ with named groups per service
-- Service Discovery: Nacos server at localhost:8848
 
 ### Current Implementation Status
 - ✅ **Completed**: Common module, User service, Flower service, Log service, Frontend basic features
@@ -143,8 +155,8 @@ Services use `application.yml` with profiles (dev/docker). Key configurations:
 
 ### Testing
 The project currently focuses on integration testing. Run services individually for testing:
-1. Start infrastructure: MySQL, Redis, RocketMQ, Nacos
-2. Start backend services in dependency order
+1. Start infrastructure: MySQL, Redis, RocketMQ
+2. Start backend services independently
 3. Start frontend with `npm run serve`
 4. Access frontend at http://localhost:8080
 

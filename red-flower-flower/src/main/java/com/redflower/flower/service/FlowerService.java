@@ -1,8 +1,13 @@
 package com.redflower.flower.service;
 
+import com.redflower.flower.dto.BlackFlowerEliminationDTO;
 import com.redflower.flower.dto.FlowerTransferDTO;
+import com.redflower.flower.dto.RewardExchangeDTO;
 import com.redflower.flower.entity.FlowerAccount;
+import com.redflower.flower.entity.RewardItem;
 import com.redflower.flower.vo.FlowerAccountVO;
+
+import java.util.List;
 
 /**
  * 红花服务接口
@@ -43,4 +48,29 @@ public interface FlowerService {
      * 获取账户余额
      */
     FlowerAccount getAccountBalance(Long userId);
+
+    /**
+     * 兑换奖励(支持红花回收)
+     */
+    void exchangeReward(RewardExchangeDTO dto);
+
+    /**
+     * 消除黑花
+     */
+    void eliminateBlackFlowers(BlackFlowerEliminationDTO dto, Long operatorUserId);
+
+    /**
+     * 检查用户是否有黑花消除权限
+     */
+    boolean hasBlackFlowerEliminationPermission(Long userId, Long familyId);
+
+    /**
+     * 获取奖励商品列表
+     */
+    List<RewardItem> getRewardItems(Long familyId, Long classId);
+
+    /**
+     * 获取奖励商品详情
+     */
+    RewardItem getRewardItem(Long rewardId);
 }

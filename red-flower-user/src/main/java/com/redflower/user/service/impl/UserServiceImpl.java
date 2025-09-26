@@ -2,7 +2,7 @@ package com.redflower.user.service.impl;
 
 import cn.hutool.core.bean.BeanUtil;
 import cn.hutool.core.util.StrUtil;
-import cn.hutool.crypto.digest.BCrypt;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.redflower.common.exception.BusinessException;
 import com.redflower.user.dto.UserLoginDTO;
@@ -16,15 +16,18 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * 用户服务实现
  */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class UserServiceImpl implements UserService {
 
     private final UserMapper userMapper;
+    private final PasswordEncoder passwordEncoder;
 
     @Override
     public Long register(UserRegisterDTO dto) {
@@ -37,7 +40,7 @@ public class UserServiceImpl implements UserService {
         // 创建用户
         User user = new User();
         BeanUtil.copyProperties(dto, user);
-        user.setPassword(BCrypt.hashpw(dto.getPassword()));
+        user.setPassword(passwordEncoder.encode(dto.getPassword()));
         user.setStatus(1);
         user.setCreateTime(LocalDateTime.now());
 
@@ -47,16 +50,25 @@ public class UserServiceImpl implements UserService {
 
     @Override
     public String login(UserLoginDTO dto) {
+        log.info("Login attempt for username: {}", dto.getUsername());
         User user = getUserByUsername(dto.getUsername());
         if (user == null) {
+            log.warn("User not found: {}", dto.getUsername());
             throw new BusinessException("用户不存在");
         }
 
         if (user.getStatus() == 0) {
+            log.warn("User disabled: {}", dto.getUsername());
             throw new BusinessException("用户已被禁用");
         }
+        log.info("Input password: [{}]", dto.getPassword());
+        log.info("Stored password hash: [{}]", user.getPassword());
 
-        if (!BCrypt.checkpw(dto.getPassword(), user.getPassword())) {
+        boolean passwordMatches = passwordEncoder.matches(dto.getPassword(), user.getPassword());
+        log.info("Password matches: {}", passwordMatches);
+
+        if (!passwordMatches) {
+            log.warn("Password mismatch for user: {}", dto.getUsername());
             throw new BusinessException("密码错误");
         }
 
